@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,12 +15,18 @@ import (
 	"github.com/openai/openai-go/v3/option"
 	log "github.com/sirupsen/logrus"
 	"github.com/tinfoilsh/tinfoil-go"
+
+	"github.com/tinfoilsh/confidential-websearch/config"
 )
 
 var verbose = flag.Bool("v", false, "enable verbose logging")
 
 type SummarizeRequest struct {
-	Content string `json:"content"`
+	Content   string `json:"content"`
+	Style     string `json:"style,omitempty"`
+	MinWords  *int   `json:"min_words,omitempty"`
+	MaxWords  *int   `json:"max_words,omitempty"`
+	MaxTokens *int   `json:"max_tokens,omitempty"`
 }
 
 type SummarizeResponse struct {
@@ -33,8 +40,8 @@ func main() {
 	}
 
 	apiKey := os.Getenv("TINFOIL_API_KEY")
-	model := getEnv("SUMMARY_MODEL", "llama3-3-70b")
-	listenAddr := getEnv("LISTEN_ADDR", ":8089")
+	model := config.GetEnv("SUMMARY_MODEL", config.DefaultModel)
+	listenAddr := config.GetEnv("LISTEN_ADDR", config.DefaultListenAddr)
 
 	client, err := tinfoil.NewClient(option.WithAPIKey(apiKey))
 	if err != nil {
@@ -57,10 +64,36 @@ func main() {
 			return
 		}
 
+		styleName := req.Style
+		if styleName == "" {
+			styleName = config.DefaultStyle
+		}
+		style, ok := config.Styles[styleName]
+		if !ok {
+			http.Error(w, "invalid style", http.StatusBadRequest)
+			return
+		}
+
+		minWords := style.MinWords
+		maxWords := style.MaxWords
+		maxTokens := style.MaxTokens
+		if req.MinWords != nil {
+			minWords = *req.MinWords
+		}
+		if req.MaxWords != nil {
+			maxWords = *req.MaxWords
+		}
+		if req.MaxTokens != nil {
+			maxTokens = *req.MaxTokens
+		}
+
+		systemPrompt := fmt.Sprintf("%s Use between %d and %d words.", style.SystemPrompt, minWords, maxWords)
+
 		resp, err := client.Chat.Completions.New(r.Context(), openai.ChatCompletionNewParams{
-			Model: model,
+			Model:     model,
+			MaxTokens: openai.Int(int64(maxTokens)),
 			Messages: []openai.ChatCompletionMessageParamUnion{
-				openai.SystemMessage("You are a summarization assistant. Summarize the provided content concisely."),
+				openai.SystemMessage(systemPrompt),
 				openai.UserMessage(req.Content),
 			},
 		})
@@ -105,11 +138,4 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	server.Shutdown(ctx)
-}
-
-func getEnv(key, fallback string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return fallback
 }
