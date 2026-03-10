@@ -1,12 +1,6 @@
 .idea/
-confidential-websearch
+summary-model
+confidential-summarizer
 ext.yml
 tuf-repo-cdn.sigstore.dev.json
-evals/.env
-evals/venv/
-evals/__pycache__/
-evals/**/__pycache__/
-evals/*_checkpoint.json
-evals/*_results.json
-evals/data/
 .gocache/

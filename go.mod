@@ -1,4 +1,4 @@
-module github.com/tinfoilsh/confidential-websearch
+module github.com/tinfoilsh/confidential-summarizer
 
 go 1.25.5
 

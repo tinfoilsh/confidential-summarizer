@@ -16,7 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tinfoilsh/tinfoil-go"
 
-	"github.com/tinfoilsh/confidential-websearch/config"
+	"github.com/tinfoilsh/confidential-summarizer/config"
 )
 
 var verbose = flag.Bool("v", false, "enable verbose logging")
