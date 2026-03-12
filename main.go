@@ -89,14 +89,19 @@ func main() {
 
 		systemPrompt := fmt.Sprintf("%s Use between %d and %d words.", style.SystemPrompt, minWords, maxWords)
 
-		resp, err := client.Chat.Completions.New(r.Context(), openai.ChatCompletionNewParams{
+		params := openai.ChatCompletionNewParams{
 			Model:     model,
 			MaxTokens: openai.Int(int64(maxTokens)),
 			Messages: []openai.ChatCompletionMessageParamUnion{
 				openai.SystemMessage(systemPrompt),
 				openai.UserMessage(req.Content),
 			},
-		})
+		}
+		if style.Temperature != nil {
+			params.Temperature = openai.Float(*style.Temperature)
+		}
+
+		resp, err := client.Chat.Completions.New(r.Context(), params)
 		if err != nil {
 			log.Errorf("Chat completion error: %v", err)
 			http.Error(w, "failed to generate summary", http.StatusInternalServerError)
