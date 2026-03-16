@@ -82,7 +82,7 @@ jobs:
 
       - name: Merge Pull Request
         if: steps.create-pr.outputs.pull-request-number
-        run: gh pr merge ${{ steps.create-pr.outputs.pull-request-number }} --rebase --admin
+        run: gh pr merge ${{ steps.create-pr.outputs.pull-request-number }} --rebase --admin --delete-branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
