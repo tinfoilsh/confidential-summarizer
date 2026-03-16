@@ -92,3 +92,22 @@ jobs:
           git fetch origin main
           git tag "tinfoil-${{ github.ref_name }}" origin/main
           git push origin "tinfoil-${{ github.ref_name }}"
+
+  release:
+    needs: update-config
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+        with:
+          ref: tinfoil-${{ github.ref_name }}
+      - uses: tinfoilsh/pri-build-action@5d450a7f30904866efc401e24484b935b7ed52dd # v0.6.1
+        with:
+          config-file: ${{ github.workspace }}/tinfoil-config.yml
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: "true"
