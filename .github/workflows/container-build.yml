@@ -1,4 +1,4 @@
-name: Docker Build and Publish
+name: Container Build and Publish
 
 on:
   push:
@@ -103,6 +103,6 @@ jobs:
       # limitation where tags pushed by Actions don't trigger tag-based workflows.
       - name: Trigger release workflow
         if: steps.create-pr.outputs.pull-request-number
-        run: gh workflow run release.yml --ref "tinfoil-${{ github.ref_name }}"
+        run: gh workflow run tinfoil-build.yml --ref "tinfoil-${{ github.ref_name }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
