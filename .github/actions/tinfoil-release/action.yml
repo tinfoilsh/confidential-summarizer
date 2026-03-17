@@ -57,7 +57,7 @@ runs:
       with:
         ref: tinfoil-${{ inputs.version }}
 
-    - uses: tinfoilsh/measure-image-action@240f9d6113ed1ee7170ae95100fb854bccb30996 # dev branch
+    - uses: tinfoilsh/measure-image-action@43349abfd0ec3c99c088b21db36ad0066f27f70a  # v0.8.1
       with:
         config-file: ${{ github.workspace }}/tinfoil-config.yml
         github-token: ${{ inputs.github-token }}
