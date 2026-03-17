@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: build-and-publish
+
 jobs:
   docker-build:
     runs-on: ubuntu-latest
@@ -55,6 +58,7 @@ jobs:
     needs: docker-build
     runs-on: ubuntu-latest
     permissions:
+      actions: write
       contents: write
       pull-requests: write
 
@@ -93,21 +97,12 @@ jobs:
           git tag "tinfoil-${{ github.ref_name }}" origin/main
           git push origin "tinfoil-${{ github.ref_name }}"
 
-  release:
-    needs: update-config
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
-      id-token: write
-      attestations: write
-
-    steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
-        with:
-          ref: tinfoil-${{ github.ref_name }}
-      - uses: tinfoilsh/pri-build-action@5d450a7f30904866efc401e24484b935b7ed52dd # v0.6.1
-        with:
-          config-file: ${{ github.workspace }}/tinfoil-config.yml
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          prerelease: "true"
+      # Dispatch release as a separate workflow so that github.ref_name
+      # resolves to the tinfoil tag (pri-build-action depends on this).
+      # Using workflow_dispatch with --ref also avoids the GITHUB_TOKEN
+      # limitation where tags pushed by Actions don't trigger tag-based workflows.
+      - name: Trigger release workflow
+        if: steps.create-pr.outputs.pull-request-number
+        run: gh workflow run release.yml --ref "tinfoil-${{ github.ref_name }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
