@@ -58,9 +58,13 @@ jobs:
     needs: docker-build
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       actions: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Trigger tinfoil build workflow
         run: |
           gh workflow run tinfoil-build.yml \
