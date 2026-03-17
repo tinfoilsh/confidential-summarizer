@@ -1,4 +1,4 @@
-name: Tinfoil Release
+name: Tinfoil Build and Attest
 
 on:
   workflow_dispatch:
