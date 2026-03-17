@@ -54,21 +54,22 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
 
-  trigger-tinfoil-build:
+  tinfoil-release:
     needs: docker-build
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      actions: write
+      contents: write
+      packages: write
+      pull-requests: write
+      id-token: write
+      attestations: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Trigger tinfoil build workflow
-        run: |
-          gh workflow run tinfoil-build.yml \
-            -f digest=${{ needs.docker-build.outputs.digest }} \
-            -f version=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/tinfoil-release
+        with:
+          digest: ${{ needs.docker-build.outputs.digest }}
+          version: ${{ github.ref_name }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
