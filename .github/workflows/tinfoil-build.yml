@@ -2,9 +2,61 @@ name: Tinfoil Build and Attest
 
 on:
   workflow_dispatch:
+    inputs:
+      digest:
+        description: 'Docker image digest from the container build'
+        required: true
+        type: string
+      version:
+        description: 'Version tag (e.g., v0.0.6)'
+        required: true
+        type: string
 
 jobs:
+  update-tinfoil-config:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+        with:
+          ref: main
+
+      - name: Update tinfoil-config.yml
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}"
+          DIGEST="${{ inputs.digest }}"
+          sed -i "s|image: \"${IMAGE}[:@].*\"|image: \"${IMAGE}@${DIGEST}\" # ${{ inputs.version }}|" tinfoil-config.yml
+
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # 7.0.11
+        with:
+          branch: update-config/${{ inputs.version }}
+          commit-message: "chore: update container image to ${{ inputs.version }}"
+          title: "chore: update container image to ${{ inputs.version }}"
+          body: |
+            Updates `tinfoil-config.yml` to use the container image built from tag `${{ inputs.version }}` with digest `${{ inputs.digest }}`.
+
+      - name: Merge Pull Request
+        if: steps.create-pr.outputs.pull-request-number
+        run: gh pr merge ${{ steps.create-pr.outputs.pull-request-number }} --rebase --admin --delete-branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push tinfoil tag
+        if: steps.create-pr.outputs.pull-request-number
+        run: |
+          git fetch origin main
+          git tag "tinfoil-${{ inputs.version }}" origin/main
+          git push origin "tinfoil-${{ inputs.version }}"
+
   release:
+    needs: update-tinfoil-config
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -14,8 +66,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
-      - uses: tinfoilsh/pri-build-action@5d450a7f30904866efc401e24484b935b7ed52dd # v0.6.1
+        with:
+          ref: tinfoil-${{ inputs.version }}
+      - uses: tinfoilsh/measure-image-action@240f9d6113ed1ee7170ae95100fb854bccb30996 # dev branch
         with:
           config-file: ${{ github.workspace }}/tinfoil-config.yml
           github-token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: "true"
+          release-ref: tinfoil-${{ inputs.version }}
