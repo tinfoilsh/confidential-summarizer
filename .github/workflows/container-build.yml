@@ -68,7 +68,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
 
-      - uses: tinfoilsh/container-release-action@78f3e0e3f00c006c3f3ee18defc856b6aac6a50d # dev version
+      - uses: tinfoilsh/container-release-action@f0553f605c2b4862aaf6b935d6e7cf682a75059e # v0.1.0
         with:
           digest: ${{ needs.docker-build.outputs.digest }}
           version: ${{ github.ref_name }}
