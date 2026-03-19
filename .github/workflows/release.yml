@@ -68,7 +68,7 @@ jobs:
       attestations: write
 
     steps:
-      - uses: tinfoilsh/container-release-action@28ee9c8eaec026717a5d239b1ad389c7e5f2b6ae # dev version
+      - uses: tinfoilsh/container-release-action@63f9a2f3e3eab910919aff711131060bae939fc0 # v0.2.0
         with:
           digest: ${{ needs.docker-build.outputs.digest }}
           version: ${{ inputs.version }}
