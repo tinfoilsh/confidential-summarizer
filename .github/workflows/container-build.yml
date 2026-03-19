@@ -1,9 +1,12 @@
 name: Container Build and Publish
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. v1.0.0)'
+        required: true
+        type: string
 
 concurrency:
   group: build-and-publish
@@ -37,8 +40,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{version}},value=${{ inputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }}
             type=sha,format=short
 
       - name: Build and push Docker image
@@ -52,7 +55,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VERSION=${{ github.ref_name }}
+            VERSION=${{ inputs.version }}
 
   tinfoil-release:
     needs: docker-build
@@ -65,11 +68,8 @@ jobs:
       attestations: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
-
-      - uses: tinfoilsh/container-release-action@f0553f605c2b4862aaf6b935d6e7cf682a75059e # v0.1.0
+      - uses: tinfoilsh/container-release-action@28ee9c8eaec026717a5d239b1ad389c7e5f2b6ae # dev version
         with:
           digest: ${{ needs.docker-build.outputs.digest }}
-          version: ${{ github.ref_name }}
+          version: ${{ inputs.version }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
