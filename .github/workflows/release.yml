@@ -1,4 +1,4 @@
-name: Container Build and Publish
+name: Container Build and Release
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         type: string
 
 concurrency:
-  group: build-and-publish
+  group: build-and-release
 
 jobs:
   docker-build:
