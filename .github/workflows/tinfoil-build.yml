@@ -62,15 +62,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
       pull-requests: write
-      id-token: write
-      attestations: write
 
     steps:
-      - uses: tinfoilsh/container-release-action@63f9a2f3e3eab910919aff711131060bae939fc0 # v0.2.0
+      - name: Update tinfoil-config.yml and create tag
+        uses: tinfoilsh/container-release-action@3df6b873c966ab1adfd0c4eb513634c5d296000a # dev version
         with:
-          digest: ${{ needs.docker-build.outputs.digest }}
           version: ${{ inputs.version }}
+          digest: ${{ needs.docker-build.outputs.digest }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          release-branch: ${{ github.ref_name }}
+          base-branch: ${{ github.ref_name }}
+
+      - name: Trigger release action
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh workflow run tinfoil-release.yml \
+            --ref "$VERSION"
