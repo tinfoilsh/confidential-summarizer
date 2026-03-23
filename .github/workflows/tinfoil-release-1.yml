@@ -1,4 +1,4 @@
-name: Container Build and Release
+name: 'Tinfoil Container Release - Stage 1'
 
 on:
   workflow_dispatch:
@@ -57,7 +57,7 @@ jobs:
           build-args: |
             VERSION=${{ inputs.version }}
 
-  tinfoil-release:
+  config-update-and-tag:
     needs: docker-build
     runs-on: ubuntu-latest
     permissions:
@@ -79,5 +79,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.version }}
         run: |
-          gh workflow run tinfoil-release.yml \
-            --ref "$VERSION"
+          gh workflow run tinfoil-release.yml --ref "$VERSION"
