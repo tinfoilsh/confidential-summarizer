@@ -78,7 +78,7 @@ jobs:
       - name: Update tinfoil-config.yml and create tag
         uses: tinfoilsh/update-container-action@a9d308f86a2257f31cba1c43540bdd3b53d30b3b # v0.4.0
         with:
-          images: ghcr.io/${{ github.repository }}
+          image: ghcr.io/${{ github.repository }}
           version: ${{ inputs.version }}
           digest: ${{ needs.docker-build.outputs.digest }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
