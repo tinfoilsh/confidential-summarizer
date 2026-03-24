@@ -83,9 +83,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           base-branch: ${{ github.ref_name }}
 
-      - name: Trigger release action
+      - name: Trigger Tinfoil Container Release Stage 2 action
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.version }}
         run: |
-          gh workflow run tinfoil-release.yml --ref "$VERSION"
+          gh workflow run tinfoil-release-2.yml --ref "$VERSION"
