@@ -1,4 +1,4 @@
-name: 'Tinfoil Container Release - Stage 1'
+name: 'Tinfoil Container Build'
 
 on:
   workflow_dispatch:
@@ -84,9 +84,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           base-branch: ${{ github.ref_name }}
 
-      - name: Trigger Tinfoil Container Release Stage 2 action
+      - name: Trigger Tinfoil Container Release action
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.version }}
         run: |
-          gh workflow run tinfoil-release-2.yml --ref "$VERSION"
+          gh workflow run tinfoil-release.yml --ref "$VERSION"
