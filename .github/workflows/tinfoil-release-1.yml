@@ -76,7 +76,7 @@ jobs:
 
     steps:
       - name: Update tinfoil-config.yml and create tag
-        uses: tinfoilsh/container-release-action@3df6b873c966ab1adfd0c4eb513634c5d296000a # dev version
+        uses: tinfoilsh/container-release-action@329555b64fe9685196b91e6598ca06b4647b8821 # v0.3.0
         with:
           version: ${{ inputs.version }}
           digest: ${{ needs.docker-build.outputs.digest }}
