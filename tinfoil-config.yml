@@ -5,7 +5,7 @@ memory: 16384
 
 containers:
   - name: "summarizer"
-    image: "ghcr.io/tinfoilsh/confidential-summarizer@sha256:0000000000000000000000000000000000000000000000000000000000000000" # placeholder - populated during release
+    image: "ghcr.io/tinfoilsh/confidential-summarizer@sha256:e32fe7df6109747e61e2524175c80fac29faebf3c488df7139adb66fe822f977" # v0.1.9
     env:
       - SUMMARY_MODEL: "llama3-3-70b"
     secrets:
