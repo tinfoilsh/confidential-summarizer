@@ -17,7 +17,6 @@ networks:
     egress: open
 
 shim:
-  listen-port: 443
   upstream-port: 8089
   paths:
     - /summarize
