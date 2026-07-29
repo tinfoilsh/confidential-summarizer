@@ -3,7 +3,7 @@ package config
 import "os"
 
 const (
-	DefaultModel      = "llama3-3-70b"
+	DefaultModel      = "gpt-oss-120b"
 	DefaultListenAddr = ":8089"
 	DefaultStyle      = "default"
 )
