@@ -21,7 +21,7 @@ var Styles = map[string]Style{
 		SystemPrompt: "Summarize the following text.",
 		MinWords:     10,
 		MaxWords:     100,
-		MaxTokens:    1024,
+		MaxTokens:    2048,
 	},
 	"thoughts_summary": {
 		SystemPrompt: `You produce a brief status label describing what an AI assistant is currently reasoning about. The label is shown to a user who is waiting for the AI to finish thinking.
@@ -44,14 +44,14 @@ Good examples:
 - Deciding how to structure the response`,
 		MinWords:    4,
 		MaxWords:    12,
-		MaxTokens:   64,
+		MaxTokens:   1024,
 		Temperature: floatPtr(0.2),
 	},
 	"title_summary": {
 		SystemPrompt: "Generate a concise, descriptive title for the following text. ONLY output plain text - never output markdown or code.",
 		MinWords:     2,
 		MaxWords:     5,
-		MaxTokens:    32,
+		MaxTokens:    1024,
 	},
 }
 
