@@ -35,7 +35,7 @@ curl http://localhost:8089/summarize \
     "style": "thoughts_summary",
     "min_words": 5,
     "max_words": 20,
-    "max_tokens": 128
+    "max_tokens": 1024
   }'
 ```
 
@@ -53,9 +53,9 @@ curl http://localhost:8089/summarize \
 
 | Style | Description | Words | Max Tokens |
 |-------|-------------|-------|------------|
-| `default` | General summary | 10-100 | 1024 |
-| `thoughts_summary` | Describes what's on the person's mind | 5-15 | 64 |
-| `title_summary` | Short descriptive title | 2-5 | 32 |
+| `default` | General summary | 10-100 | 2048 |
+| `thoughts_summary` | Describes what's on the person's mind | 5-15 | 1024 |
+| `title_summary` | Short descriptive title | 2-5 | 1024 |
 
 **Response:**
 

@@ -90,8 +90,9 @@ func main() {
 		systemPrompt := fmt.Sprintf("%s Use between %d and %d words.", style.SystemPrompt, minWords, maxWords)
 
 		params := openai.ChatCompletionNewParams{
-			Model:     model,
-			MaxTokens: openai.Int(int64(maxTokens)),
+			Model:               model,
+			MaxCompletionTokens: openai.Int(int64(maxTokens)),
+			ReasoningEffort:     openai.ReasoningEffortLow,
 			Messages: []openai.ChatCompletionMessageParamUnion{
 				openai.SystemMessage(systemPrompt),
 				openai.UserMessage(req.Content),
