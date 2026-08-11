@@ -8,7 +8,7 @@ containers:
     restart: always
     networks: [web]
     env:
-      - SUMMARY_MODEL: "gpt-oss-120b"
+      - SUMMARY_MODEL: "llama3-3-70b"
     secrets:
       - TINFOIL_API_KEY
 
