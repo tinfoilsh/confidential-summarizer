@@ -18,7 +18,7 @@ go run . -v
 | Variable          | Default        | Description                  |
 | ----------------- | -------------- | ---------------------------- |
 | `TINFOIL_API_KEY` | -              | Tinfoil API key (required)   |
-| `SUMMARY_MODEL`   | `gpt-oss-120b` | Model used for summarization |
+| `SUMMARY_MODEL`   | `llama3-3-70b` | Model used for summarization |
 | `LISTEN_ADDR`     | `:8089`        | Address to listen on         |
 
 ## API

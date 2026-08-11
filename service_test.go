@@ -182,7 +182,7 @@ func TestOpenAIResponseClassificationUsesStatusAndJSONTypes(t *testing.T) {
 
 			options := append(openAIClientOptions("test-key"), option.WithBaseURL(server.URL+"/"), option.WithHTTPClient(server.Client()))
 			client := openai.NewClient(options...)
-			service := testService(newOpenAIUpstream(&client, "gpt-oss-120b"), time.Second, io.Discard)
+			service := testService(newOpenAIUpstream(&client, "llama3-3-70b"), time.Second, io.Discard)
 			response := performRequest(service, `{"content":"text"}`)
 			body := decodeErrorResponse(t, response)
 			if response.Code != test.serviceCode || body.Code != test.errorCode {
@@ -253,7 +253,7 @@ func TestOpenAIClientOptionsDisableAutomaticRetries(t *testing.T) {
 	options := append(openAIClientOptions("test-key"), option.WithBaseURL(server.URL+"/"), option.WithHTTPClient(server.Client()))
 	client := openai.NewClient(options...)
 	_, err := client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
-		Model:    "gpt-oss-120b",
+		Model:    "llama3-3-70b",
 		Messages: []openai.ChatCompletionMessageParamUnion{openai.UserMessage("text")},
 	})
 	if err == nil {
