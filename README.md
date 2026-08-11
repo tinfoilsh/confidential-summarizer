@@ -15,11 +15,11 @@ go run . -v
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `TINFOIL_API_KEY` | - | Tinfoil API key (required) |
-| `SUMMARY_MODEL` | `gpt-oss-120b` | Model used for summarization |
-| `LISTEN_ADDR` | `:8089` | Address to listen on |
+| Variable          | Default        | Description                  |
+| ----------------- | -------------- | ---------------------------- |
+| `TINFOIL_API_KEY` | -              | Tinfoil API key (required)   |
+| `SUMMARY_MODEL`   | `gpt-oss-120b` | Model used for summarization |
+| `LISTEN_ADDR`     | `:8089`        | Address to listen on         |
 
 ## API
 
@@ -41,21 +41,21 @@ curl http://localhost:8089/summarize \
 
 **Request fields:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `content` | string | yes | Text to summarize |
-| `style` | string | no | Summary style (default: `"default"`) |
-| `min_words` | int | no | Override minimum word count |
-| `max_words` | int | no | Override maximum word count |
-| `max_tokens` | int | no | Override max tokens for generation |
+| Field        | Type   | Required | Description                          |
+| ------------ | ------ | -------- | ------------------------------------ |
+| `content`    | string | yes      | Text to summarize                    |
+| `style`      | string | no       | Summary style (default: `"default"`) |
+| `min_words`  | int    | no       | Override minimum word count          |
+| `max_words`  | int    | no       | Override maximum word count          |
+| `max_tokens` | int    | no       | Override max tokens for generation   |
 
 **Styles:**
 
-| Style | Description | Words | Max Tokens |
-|-------|-------------|-------|------------|
-| `default` | General summary | 10-100 | 2048 |
-| `thoughts_summary` | Describes what's on the person's mind | 5-15 | 1024 |
-| `title_summary` | Short descriptive title | 2-5 | 1024 |
+| Style              | Description                           | Words  | Max Tokens |
+| ------------------ | ------------------------------------- | ------ | ---------- |
+| `default`          | General summary                       | 10-100 | 2048       |
+| `thoughts_summary` | Describes what's on the person's mind | 4-12   | 1024       |
+| `title_summary`    | Short descriptive title               | 2-5    | 1024       |
 
 **Response:**
 
