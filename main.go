@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -32,10 +30,6 @@ func main() {
 	}
 	model := config.GetEnv("SUMMARY_MODEL", config.DefaultModel)
 	listenAddr := config.GetEnv("LISTEN_ADDR", config.DefaultListenAddr)
-	maxConcurrency, err := configuredConcurrency(os.Getenv("MAX_CONCURRENT_REQUESTS"))
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	client, err := newTinfoilClient(apiKey)
 	if err != nil {
@@ -43,7 +37,7 @@ func main() {
 	}
 
 	upstream := newOpenAIUpstream(client.Client, model)
-	service := newSummaryService(upstream, maxConcurrency, defaultResilienceConfig(), log.StandardLogger())
+	service := newSummaryService(upstream, defaultUpstreamTimeout, log.StandardLogger())
 	mux := http.NewServeMux()
 	mux.Handle("/summarize", service)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -81,16 +75,4 @@ func requiredAPIKey(value string) (string, error) {
 		return "", errors.New("TINFOIL_API_KEY is required")
 	}
 	return value, nil
-}
-
-func configuredConcurrency(value string) (int, error) {
-	if value == "" {
-		return defaultMaxConcurrency, nil
-	}
-
-	concurrency, err := strconv.Atoi(value)
-	if err != nil || concurrency < minMaxConcurrency || concurrency > maxMaxConcurrency {
-		return 0, fmt.Errorf("MAX_CONCURRENT_REQUESTS must be an integer between %d and %d", minMaxConcurrency, maxMaxConcurrency)
-	}
-	return concurrency, nil
 }

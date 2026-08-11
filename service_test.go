@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -24,8 +23,6 @@ const (
 	testContent       = "private content"
 	testSummary       = "safe summary"
 	testSecret        = "highly-sensitive-value"
-	testCircuitDelay  = 20 * time.Millisecond
-	testRequestWait   = time.Second
 	testTimeout       = 10 * time.Millisecond
 	testHTTPErrorBody = `{"error":{"message":"unavailable","type":"server_error"}}`
 )
@@ -38,20 +35,11 @@ func (f fakeUpstream) Summarize(ctx context.Context, input summaryInput) (string
 	return f.summarize(ctx, input)
 }
 
-func testService(upstream summaryUpstream, maxConcurrency int, resilience resilienceConfig, output io.Writer) *summaryService {
+func testService(upstream summaryUpstream, upstreamTimeout time.Duration, output io.Writer) *summaryService {
 	logger := logrus.New()
 	logger.SetOutput(output)
 	logger.SetFormatter(&logrus.JSONFormatter{})
-	return newSummaryService(upstream, maxConcurrency, resilience, logger)
-}
-
-func testResilience() resilienceConfig {
-	return resilienceConfig{
-		UpstreamTimeout:     time.Second,
-		BreakerFailureLimit: 2,
-		BreakerBaseCooldown: testCircuitDelay,
-		BreakerMaxCooldown:  4 * testCircuitDelay,
-	}
+	return newSummaryService(upstream, upstreamTimeout, logger)
 }
 
 func performRequest(service http.Handler, body string) *httptest.ResponseRecorder {
@@ -79,35 +67,11 @@ func TestRequiredAPIKey(t *testing.T) {
 	}
 }
 
-func TestConfiguredConcurrency(t *testing.T) {
-	if value, err := configuredConcurrency(""); err != nil || value != defaultMaxConcurrency {
-		t.Fatalf("default concurrency = %d, err = %v", value, err)
-	}
-	if value, err := configuredConcurrency("32"); err != nil || value != 32 {
-		t.Fatalf("configured concurrency = %d, err = %v", value, err)
-	}
-	for _, value := range []string{"0", "1025", "invalid"} {
-		if _, err := configuredConcurrency(value); err == nil {
-			t.Fatalf("expected concurrency %q to be rejected", value)
-		}
-	}
-}
-
-func TestExponentialCooldownIsCapped(t *testing.T) {
-	base := 5 * time.Second
-	maximum := 20 * time.Second
-	for opening, expected := range []time.Duration{5 * time.Second, 10 * time.Second, 20 * time.Second, 20 * time.Second} {
-		if actual := exponentialCooldown(base, maximum, uint32(opening+1)); actual != expected {
-			t.Fatalf("opening %d cooldown = %s, want %s", opening+1, actual, expected)
-		}
-	}
-}
-
 func TestRequestValidation(t *testing.T) {
 	upstream := fakeUpstream{summarize: func(context.Context, summaryInput) (string, error) {
 		return testSummary, nil
 	}}
-	service := testService(upstream, defaultMaxConcurrency, testResilience(), io.Discard)
+	service := testService(upstream, time.Second, io.Discard)
 
 	tests := []struct {
 		name   string
@@ -135,8 +99,8 @@ func TestRequestValidation(t *testing.T) {
 			if body.Code != test.code || body.RequestID == "" {
 				t.Fatalf("error = %+v, want code %q and request ID", body, test.code)
 			}
-			if body.Error == "" || body.Message != body.Error {
-				t.Fatalf("error envelope is not backward compatible: %+v", body)
+			if body.Error == "" {
+				t.Fatalf("error response is missing an error: %+v", body)
 			}
 			if response.Header().Get("Content-Type") != "application/json" {
 				t.Fatalf("content type = %q", response.Header().Get("Content-Type"))
@@ -151,7 +115,7 @@ func TestValidatedOverridesReachUpstream(t *testing.T) {
 		received <- input
 		return testSummary, nil
 	}}
-	service := testService(upstream, defaultMaxConcurrency, testResilience(), io.Discard)
+	service := testService(upstream, time.Second, io.Discard)
 	response := performRequest(service, `{"content":"text","style":"title_summary","min_words":3,"max_words":8,"max_tokens":512}`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
@@ -172,7 +136,7 @@ func TestUpstreamErrorMappings(t *testing.T) {
 		retryAfter string
 	}{
 		{name: "rate limited", err: &openai.Error{StatusCode: http.StatusTooManyRequests, Response: rateResponse}, status: http.StatusTooManyRequests, code: "upstream_rate_limited", retryAfter: "7"},
-		{name: "transient", err: &openai.Error{StatusCode: http.StatusBadGateway}, status: http.StatusServiceUnavailable, code: "upstream_unavailable", retryAfter: "1"},
+		{name: "upstream unavailable", err: &openai.Error{StatusCode: http.StatusBadGateway}, status: http.StatusServiceUnavailable, code: "upstream_unavailable"},
 		{name: "upstream rejection", err: &openai.Error{StatusCode: http.StatusBadRequest}, status: http.StatusBadGateway, code: "upstream_error"},
 		{name: "malformed response", err: &json.SyntaxError{}, status: http.StatusBadGateway, code: "invalid_upstream_response"},
 	}
@@ -180,7 +144,7 @@ func TestUpstreamErrorMappings(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			upstream := fakeUpstream{summarize: func(context.Context, summaryInput) (string, error) { return "", test.err }}
-			service := testService(upstream, defaultMaxConcurrency, testResilience(), io.Discard)
+			service := testService(upstream, time.Second, io.Discard)
 			response := performRequest(service, `{"content":"text"}`)
 			if response.Code != test.status {
 				t.Fatalf("status = %d, want %d", response.Code, test.status)
@@ -218,7 +182,7 @@ func TestOpenAIResponseClassificationUsesStatusAndJSONTypes(t *testing.T) {
 
 			options := append(openAIClientOptions("test-key"), option.WithBaseURL(server.URL+"/"), option.WithHTTPClient(server.Client()))
 			client := openai.NewClient(options...)
-			service := testService(newOpenAIUpstream(&client, "gpt-oss-120b"), defaultMaxConcurrency, testResilience(), io.Discard)
+			service := testService(newOpenAIUpstream(&client, "gpt-oss-120b"), time.Second, io.Discard)
 			response := performRequest(service, `{"content":"text"}`)
 			body := decodeErrorResponse(t, response)
 			if response.Code != test.serviceCode || body.Code != test.errorCode {
@@ -233,9 +197,7 @@ func TestUpstreamTimeoutAndCancellationAreDistinct(t *testing.T) {
 		<-ctx.Done()
 		return "", ctx.Err()
 	}}
-	resilience := testResilience()
-	resilience.UpstreamTimeout = testTimeout
-	service := testService(upstream, defaultMaxConcurrency, resilience, io.Discard)
+	service := testService(upstream, testTimeout, io.Discard)
 
 	timeoutResponse := performRequest(service, `{"content":"text"}`)
 	if timeoutResponse.Code != http.StatusGatewayTimeout || decodeErrorResponse(t, timeoutResponse).Code != "upstream_timeout" {
@@ -253,93 +215,9 @@ func TestUpstreamTimeoutAndCancellationAreDistinct(t *testing.T) {
 	}
 }
 
-func TestConcurrencyLimitRejectsImmediately(t *testing.T) {
-	started := make(chan struct{})
-	release := make(chan struct{})
-	var releaseOnce sync.Once
-	releaseRequest := func() { releaseOnce.Do(func() { close(release) }) }
-	t.Cleanup(releaseRequest)
-	upstream := fakeUpstream{summarize: func(context.Context, summaryInput) (string, error) {
-		close(started)
-		<-release
-		return testSummary, nil
-	}}
-	service := testService(upstream, 1, testResilience(), io.Discard)
-	firstDone := make(chan *httptest.ResponseRecorder, 1)
-	go func() { firstDone <- performRequest(service, `{"content":"first"}`) }()
-
-	select {
-	case <-started:
-	case <-time.After(testRequestWait):
-		t.Fatal("first request did not reach upstream")
-	}
-	second := performRequest(service, `{"content":"second"}`)
-	if second.Code != http.StatusServiceUnavailable || decodeErrorResponse(t, second).Code != "overloaded" {
-		t.Fatalf("second response = %d %s", second.Code, second.Body.String())
-	}
-	if second.Header().Get("Retry-After") != "1" {
-		t.Fatalf("Retry-After = %q", second.Header().Get("Retry-After"))
-	}
-	releaseRequest()
-	if first := <-firstDone; first.Code != http.StatusOK {
-		t.Fatalf("first status = %d", first.Code)
-	}
-}
-
-func TestCircuitOpensAndRecoversWithSingleProbe(t *testing.T) {
-	var calls atomic.Int32
-	probeStarted := make(chan struct{})
-	releaseProbe := make(chan struct{})
-	var releaseOnce sync.Once
-	releaseRequest := func() { releaseOnce.Do(func() { close(releaseProbe) }) }
-	t.Cleanup(releaseRequest)
-	upstream := fakeUpstream{summarize: func(context.Context, summaryInput) (string, error) {
-		call := calls.Add(1)
-		if call <= 2 {
-			return "", errors.New("temporary failure")
-		}
-		if call == 3 {
-			close(probeStarted)
-			<-releaseProbe
-		}
-		return testSummary, nil
-	}}
-	service := testService(upstream, defaultMaxConcurrency, testResilience(), io.Discard)
-
-	for range 2 {
-		if response := performRequest(service, `{"content":"text"}`); response.Code != http.StatusServiceUnavailable {
-			t.Fatalf("failure status = %d", response.Code)
-		}
-	}
-	openResponse := performRequest(service, `{"content":"text"}`)
-	if decodeErrorResponse(t, openResponse).Code != "circuit_open" || calls.Load() != 2 {
-		t.Fatalf("circuit did not reject request, calls=%d body=%s", calls.Load(), openResponse.Body.String())
-	}
-
-	time.Sleep(testCircuitDelay + testTimeout)
-	probeDone := make(chan *httptest.ResponseRecorder, 1)
-	go func() { probeDone <- performRequest(service, `{"content":"probe"}`) }()
-	select {
-	case <-probeStarted:
-	case <-time.After(testRequestWait):
-		t.Fatal("half-open probe did not start")
-	}
-	concurrentProbe := performRequest(service, `{"content":"second probe"}`)
-	if decodeErrorResponse(t, concurrentProbe).Code != "circuit_open" || calls.Load() != 3 {
-		t.Fatalf("concurrent probe was not rejected, calls=%d body=%s", calls.Load(), concurrentProbe.Body.String())
-	}
-	releaseRequest()
-	if response := <-probeDone; response.Code != http.StatusOK {
-		t.Fatalf("probe status = %d", response.Code)
-	}
-	if response := performRequest(service, `{"content":"recovered"}`); response.Code != http.StatusOK || calls.Load() != 4 {
-		t.Fatalf("recovery status = %d calls=%d", response.Code, calls.Load())
-	}
-}
-
 func TestEmptySummaryIsBadGateway(t *testing.T) {
 	upstream := fakeUpstream{summarize: func(context.Context, summaryInput) (string, error) { return "  ", nil }}
-	service := testService(upstream, defaultMaxConcurrency, testResilience(), io.Discard)
+	service := testService(upstream, time.Second, io.Discard)
 	response := performRequest(service, `{"content":"text"}`)
 	if response.Code != http.StatusBadGateway || decodeErrorResponse(t, response).Code != "invalid_upstream_response" {
 		t.Fatalf("response = %d %s", response.Code, response.Body.String())
@@ -351,7 +229,7 @@ func TestErrorsAndDiagnosticsDoNotExposeContent(t *testing.T) {
 	upstream := fakeUpstream{summarize: func(context.Context, summaryInput) (string, error) {
 		return "", errors.New("upstream included " + testSecret)
 	}}
-	service := testService(upstream, defaultMaxConcurrency, testResilience(), &logs)
+	service := testService(upstream, time.Second, &logs)
 	response := performRequest(service, `{"content":"`+testSecret+`","style":"title_summary"}`)
 	combined := response.Body.String() + logs.String()
 	if strings.Contains(combined, testSecret) {
