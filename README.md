@@ -15,11 +15,11 @@ go run . -v
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `TINFOIL_API_KEY` | - | Tinfoil API key (required) |
-| `SUMMARY_MODEL` | `gpt-oss-120b` | Model used for summarization |
-| `LISTEN_ADDR` | `:8089` | Address to listen on |
+| Variable          | Default        | Description                  |
+| ----------------- | -------------- | ---------------------------- |
+| `TINFOIL_API_KEY` | -              | Tinfoil API key (required)   |
+| `SUMMARY_MODEL`   | `gpt-oss-120b` | Model used for summarization |
+| `LISTEN_ADDR`     | `:8089`        | Address to listen on         |
 
 ## API
 
@@ -41,21 +41,21 @@ curl http://localhost:8089/summarize \
 
 **Request fields:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `content` | string | yes | Text to summarize |
-| `style` | string | no | Summary style (default: `"default"`) |
-| `min_words` | int | no | Override minimum word count |
-| `max_words` | int | no | Override maximum word count |
-| `max_tokens` | int | no | Override max tokens for generation |
+| Field        | Type   | Required | Description                          |
+| ------------ | ------ | -------- | ------------------------------------ |
+| `content`    | string | yes      | Text to summarize                    |
+| `style`      | string | no       | Summary style (default: `"default"`) |
+| `min_words`  | int    | no       | Override minimum word count          |
+| `max_words`  | int    | no       | Override maximum word count          |
+| `max_tokens` | int    | no       | Override max tokens for generation   |
 
 **Styles:**
 
-| Style | Description | Words | Max Tokens |
-|-------|-------------|-------|------------|
-| `default` | General summary | 10-100 | 2048 |
-| `thoughts_summary` | Describes what's on the person's mind | 5-15 | 1024 |
-| `title_summary` | Short descriptive title | 2-5 | 1024 |
+| Style              | Description                           | Words  | Max Tokens |
+| ------------------ | ------------------------------------- | ------ | ---------- |
+| `default`          | General summary                       | 10-100 | 2048       |
+| `thoughts_summary` | Describes what's on the person's mind | 4-12   | 1024       |
+| `title_summary`    | Short descriptive title               | 2-5    | 1024       |
 
 **Response:**
 
@@ -64,6 +64,21 @@ curl http://localhost:8089/summarize \
   "summary": "A concise summary of the provided text."
 }
 ```
+
+Requests are limited to one 1 MiB JSON object with known fields, non-empty content, word limits from 1-1000, and `max_tokens` from 1-32768. Every summarize response includes an `X-Request-ID` header.
+
+**Errors:**
+
+```json
+{
+  "error": "upstream service is temporarily unavailable",
+  "code": "upstream_unavailable",
+  "request_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+  "retry_after_seconds": 7
+}
+```
+
+Validation errors return `400` or `413`; upstream errors return `429`, `502`, or `503`; and the 30-second upstream timeout returns `504`. When supplied upstream, `Retry-After` is returned as a header and `retry_after_seconds`. Request content and summaries are not logged.
 
 ### Health Check
 
