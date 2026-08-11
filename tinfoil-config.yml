@@ -4,7 +4,7 @@ memory: 16384
 
 containers:
   - name: "summarizer"
-    image: "ghcr.io/tinfoilsh/confidential-summarizer@sha256:0000000000000000000000000000000000000000000000000000000000000000" # placeholder - populated during release
+    image: "ghcr.io/tinfoilsh/confidential-summarizer@sha256:467759fff2272776c39cc6da0bf0105e4cc7f92460e4bcb87d52bd0e8e6f19d3" # v0.1.14
     restart: always
     networks: [web]
     env:
