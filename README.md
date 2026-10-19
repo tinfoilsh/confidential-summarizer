@@ -1,108 +1,37 @@
 # Summary Model
 
-A summarization service that runs inside a Tinfoil secure enclave. Accepts text content and returns summaries in configurable styles.
+A summarization service that runs inside a Tinfoil secure enclave at `summarizer.tinfoil.sh`. Tinfoil Chat (web, iOS, and the chat harness) uses it for chat titles and live summaries of model reasoning. It calls the model through the [Tinfoil Go SDK](https://github.com/tinfoilsh/tinfoil-go) with attestation, and does not log request content or summaries.
 
-## Quick Start
+## Development
 
 ```bash
-export TINFOIL_API_KEY="your-api-key"
-
-go run .
-
-# With verbose logging
-go run . -v
+TINFOIL_API_KEY="your-api-key" go run . -v
 ```
-
-## Environment Variables
-
-| Variable          | Default        | Description                  |
-| ----------------- | -------------- | ---------------------------- |
-| `TINFOIL_API_KEY` | -              | Tinfoil API key (required)   |
-| `SUMMARY_MODEL`   | `llama3-3-70b` | Model used for summarization |
-| `LISTEN_ADDR`     | `:8089`        | Address to listen on         |
 
 ## API
 
-### Summarize
+### `POST /summarize`
 
-`POST /summarize`
+Request: a JSON object (at most 1 MiB, unknown fields rejected) with:
 
-```bash
-curl http://localhost:8089/summarize \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "Your text to summarize...",
-    "style": "thoughts_summary",
-    "min_words": 5,
-    "max_words": 20,
-    "max_tokens": 1024
-  }'
-```
+- `content` (string, required): non-empty text to summarize
+- `style` (string): `default` (10-100 words), `thoughts_summary` (4-12 word status label for reasoning text), or `title_summary` (2-5 word title); defaults to `default`
+- `min_words`, `max_words` (int, 1-1000): override the style's word range
+- `max_tokens` (int, 1-32768): override the style's generation limit
 
-**Request fields:**
+Response: `{"summary": "..."}`. Every response carries an `X-Request-ID` header.
 
-| Field        | Type   | Required | Description                          |
-| ------------ | ------ | -------- | ------------------------------------ |
-| `content`    | string | yes      | Text to summarize                    |
-| `style`      | string | no       | Summary style (default: `"default"`) |
-| `min_words`  | int    | no       | Override minimum word count          |
-| `max_words`  | int    | no       | Override maximum word count          |
-| `max_tokens` | int    | no       | Override max tokens for generation   |
+Errors return a JSON body with `error`, `code`, and `request_id`, plus `retry_after_seconds` when upstream supplied `Retry-After` (also returned as a header). Validation errors return `400` or `413`; upstream errors return `429`, `502`, or `503`; the 30-second upstream timeout returns `504`.
 
-**Styles:**
+### `GET /health`
 
-| Style              | Description                           | Words  | Max Tokens |
-| ------------------ | ------------------------------------- | ------ | ---------- |
-| `default`          | General summary                       | 10-100 | 2048       |
-| `thoughts_summary` | Describes what's on the person's mind | 4-12   | 1024       |
-| `title_summary`    | Short descriptive title               | 2-5    | 1024       |
-
-**Response:**
-
-```json
-{
-  "summary": "A concise summary of the provided text."
-}
-```
-
-Requests are limited to one 1 MiB JSON object with known fields, non-empty content, word limits from 1-1000, and `max_tokens` from 1-32768. Every summarize response includes an `X-Request-ID` header.
-
-**Errors:**
-
-```json
-{
-  "error": "upstream service is temporarily unavailable",
-  "code": "upstream_unavailable",
-  "request_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
-  "retry_after_seconds": 7
-}
-```
-
-Validation errors return `400` or `413`; upstream errors return `429`, `502`, or `503`; and the 30-second upstream timeout returns `504`. When supplied upstream, `Retry-After` is returned as a header and `retry_after_seconds`. Request content and summaries are not logged.
-
-### Health Check
-
-`GET /health` - Returns `ok`
-
-## Docker
-
-```bash
-docker build -t summary-model .
-docker run -p 8089:8089 \
-  -e TINFOIL_API_KEY=$TINFOIL_API_KEY \
-  summary-model
-```
-
-## Security
-
-Uses the [Tinfoil Go SDK](https://github.com/tinfoilsh/tinfoil-go) for attested communication with Tinfoil enclaves.
+Returns `ok`.
 
 ## Reporting Vulnerabilities
 
 Please report security vulnerabilities by either:
 
 - Emailing [security@tinfoil.sh](mailto:security@tinfoil.sh)
-
 - Opening an issue on GitHub on this repository
 
 We aim to respond to (legitimate) security reports within 24 hours.
