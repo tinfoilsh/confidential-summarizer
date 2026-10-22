@@ -1,6 +1,6 @@
 module github.com/tinfoilsh/confidential-summarizer
 
-go 1.25.5
+go 1.27.3
 
 replace github.com/google/go-sev-guest => github.com/tinfoilsh/go-sev-guest v0.0.0-20250704193550-c725e6216008
 
